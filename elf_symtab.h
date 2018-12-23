@@ -8,9 +8,7 @@ extern "C" {
 
 int load_symtab(const char *elf);
 void free_symtab(void);
-
 void * get_addr_by_symbol(const char *name, const char *file);
-
 
 
 #ifdef __cplusplus

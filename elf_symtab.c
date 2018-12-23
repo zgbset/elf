@@ -1,18 +1,22 @@
 
+/*
+ * Get the address of variables or functions by their names
+ * By zgbset 20181223
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <elf.h>
 #include "elf_symtab.h"
 
-
 #ifndef LOG_ERR
 #define LOG_ERR(fmt, arg...) printf("[%s:%d] " fmt "\n", __func__, __LINE__, ##arg)
 #endif
 
-static Elf32_Sym * g_symtab = NULL;
+static Elf32_Sym *g_symtab = NULL;
 static int g_symnum = 0;
-static char * g_strtab = NULL;
+static char *g_strtab = NULL;
 static int g_strtab_size = 0;
 
 
@@ -26,7 +30,7 @@ int load_symtab(const char *elf)
     FILE *fp = fopen(elf, "rb");
     if (NULL == fp)
     {
-        LOG_ERR("open %s fail", elf);
+        LOG_ERR("fopen %s fail", elf);
         goto ERR_EXIT;
     }
 
@@ -34,6 +38,7 @@ int load_symtab(const char *elf)
     ret = fread(&ehdr, sizeof(ehdr), 1, fp);
     if (ret != 1)
     {
+        LOG_ERR("fread fail");
         goto ERR_EXIT;
     }
 
@@ -41,6 +46,7 @@ int load_symtab(const char *elf)
     shdrs = (Elf32_Shdr *)malloc(sh_len);
     if (NULL == shdrs)
     {
+        LOG_ERR("malloc fail");
         goto ERR_EXIT;
     }
 
@@ -48,13 +54,14 @@ int load_symtab(const char *elf)
     ret = fread(shdrs, sh_len, 1, fp);
     if (ret != 1)
     {
+        LOG_ERR("fread fail");
         goto ERR_EXIT;
     }
 
     int i;
     for (i = 0 ; i < ehdr.e_shnum ; i++)
     {
-        if (shdrs[i].sh_type != SHT_SYMTAB)
+        if (shdrs[i].sh_type == SHT_SYMTAB)
         {
             if (g_symtab || g_strtab)
             {
@@ -63,17 +70,19 @@ int load_symtab(const char *elf)
             }
 
             int offset = 0;
-            g_symnum = shdrs[i].sh_size / shdrs[i].sh_entsize - shdrs[i].sh_info;
+            g_symnum = shdrs[i].sh_size / shdrs[i].sh_entsize;
             g_symtab = (Elf32_Sym *)malloc(g_symnum * sizeof(Elf32_Sym));
             if (NULL == g_symtab)
             {
+                LOG_ERR("malloc fail");
                 goto ERR_EXIT;
             }
-            offset = shdrs[i].sh_offset + shdrs[i].sh_info * shdrs[i].sh_entsize;
+            offset = shdrs[i].sh_offset;
             fseek(fp, offset, SEEK_SET);
             ret = fread(g_symtab, g_symnum * sizeof(Elf32_Sym), 1, fp);
             if (ret != 1)
             {
+                LOG_ERR("fread fail");
                 goto ERR_EXIT;
             }
 
@@ -81,6 +90,7 @@ int load_symtab(const char *elf)
             g_strtab = (char *)malloc(g_strtab_size);
             if (NULL == g_strtab)
             {
+                LOG_ERR("malloc fail");
                 goto ERR_EXIT;
             }
             offset = shdrs[shdrs[i].sh_link].sh_offset;
@@ -88,11 +98,13 @@ int load_symtab(const char *elf)
             ret = fread(g_strtab, g_strtab_size, 1, fp);
             if (ret != 1)
             {
+                LOG_ERR("fread fail");
                 goto ERR_EXIT;
             }
         }
 	}
 
+    free(shdrs);
     fclose(fp);
     return 0;
 
@@ -151,4 +163,6 @@ void * get_addr_by_symbol(const char *name, const char *file)
             }
         }
     }
+
+    return NULL;
 }

@@ -3,7 +3,8 @@
 #include "stub.h"
 #include "elf_symtab.h"
 
-using namespace std;
+
+#define LOG_INFO(fmt, arg...) printf("[%s:%s] " fmt "\n", __FILE__, __func__, ##arg)
 
 extern "C"
 {
@@ -13,33 +14,47 @@ extern "C"
 
 typedef int (*func_ptr)(void);
 
-int main()
+static int stub_foobar_static(void)
 {
-	foo_global();
+	static int fb_s;
 
-	stubInfo si;
-	setStub((void *)foo_global, (void *)bar_global, &si);
-	foo_global();
-	cleanStub(&si);
+	LOG_INFO("stub func");
+	return 99;
+}
 
-	foo_global();
-
+int main(int argc, const char *argv[])
+{
     load_symtab(NULL);
+
+    int *p = (int *)get_addr_by_symbol("foobar", "foo.c");
+    if (p) *p = 100;
+
+    printf("call static func ...\n");
     func_ptr sf1 = (func_ptr)get_addr_by_symbol("foobar_static", "foo.c");
     func_ptr sf2 = (func_ptr)get_addr_by_symbol("foobar_static", "bar.c");
+    if (NULL == sf1 || NULL == sf2)
+    {
+        LOG_INFO("get_addr_by_symbol fail");
+        return 1;
+    }
+
     sf1();
     sf2();
 
-    free_symtab();
+    printf("replace static func ...\n");
+    foo_global();
+    stubInfo si;
+	setStub((void *)sf1, (void *)stub_foobar_static, &si);
+	foo_global();
+	cleanStub(&si);
 
+    free_symtab();
 
     try
     {
         std::ofstream fout;
         fout.open("test.txt");
-
-		fout << "Hello world" << endl;
-
+		fout << "Hello world" << std::endl;
         fout.close();
     }
     catch (...)
