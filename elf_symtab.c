@@ -11,7 +11,7 @@
 #include "elf_symtab.h"
 
 #ifndef LOG_ERR
-#define LOG_ERR(fmt, arg...) printf("[%s:%d] " fmt "\n", __func__, __LINE__, ##arg)
+#define LOG_ERR(fmt, ...) printf("[%s:%d] " fmt "\n", __func__, __LINE__, ##__VA_ARGS__)
 #endif
 
 static Elf32_Sym *g_symtab = NULL;
@@ -102,7 +102,7 @@ int load_symtab(const char *elf)
                 goto ERR_EXIT;
             }
         }
-	}
+    }
 
     free(shdrs);
     fclose(fp);
@@ -138,6 +138,12 @@ void * get_addr_by_symbol(const char *name, const char *file)
 
     if (NULL == name)
     {
+        LOG_ERR("Invalid para name == NULL");
+        return NULL;
+    }
+    if (NULL == g_symtab || NULL == g_strtab)
+    {
+        LOG_ERR("Please call load_symtab first");
         return NULL;
     }
 
